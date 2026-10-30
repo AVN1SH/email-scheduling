@@ -1,0 +1,82 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "agentGuidance": true,
+  "globalEnv": ["NODE_ENV"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["API_INTERNAL_URL", "APP_URL"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint", "^build"]
+    },
+    "check-types": {
+      "dependsOn": ["^build", "^check-types"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "API_INTERNAL_URL",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "PORT",
+        "HOST",
+        "LOG_LEVEL",
+        "APP_URL",
+        "SESSION_SECRET",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_REDIRECT_URI",
+        "CREDENTIAL_ENCRYPTION_KEY",
+        "ADMIN_EMAILS",
+        "MIN_EMAIL_DELAY_MS",
+        "MAX_EMAILS_PER_HOUR_PER_SENDER",
+        "QUEUE_PREFIX",
+        "DISPATCH_RETRY_MS",
+        "WORKER_CONCURRENCY",
+        "SMTP_TIMEOUT_MS",
+        "MAX_SEND_ATTEMPTS",
+        "SEND_RETRY_BASE_MS",
+        "ELASTICSEARCH_NODE",
+        "ELASTICSEARCH_API_KEY",
+        "ELASTICSEARCH_INDEX",
+        "ELASTICSEARCH_CA_CERT_PATH",
+        "SLACK_CLIENT_ID",
+        "SLACK_CLIENT_SECRET",
+        "SLACK_REDIRECT_URI"
+      ]
+    },
+    "dev:worker": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "LOG_LEVEL",
+        "CREDENTIAL_ENCRYPTION_KEY",
+        "ADMIN_EMAILS",
+        "MIN_EMAIL_DELAY_MS",
+        "MAX_EMAILS_PER_HOUR_PER_SENDER",
+        "QUEUE_PREFIX",
+        "DISPATCH_RETRY_MS",
+        "WORKER_CONCURRENCY",
+        "SMTP_TIMEOUT_MS",
+        "MAX_SEND_ATTEMPTS",
+        "SEND_RETRY_BASE_MS",
+        "ELASTICSEARCH_NODE",
+        "ELASTICSEARCH_API_KEY",
+        "ELASTICSEARCH_INDEX",
+        "ELASTICSEARCH_CA_CERT_PATH",
+        "SLACK_CLIENT_ID",
+        "SLACK_CLIENT_SECRET",
+        "SLACK_REDIRECT_URI"
+      ]
+    }
+  }
+}

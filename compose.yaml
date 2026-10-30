@@ -1,0 +1,52 @@
+name: email-scheduling
+
+services:
+  redis:
+    image: redis:8.2.3-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  elasticsearch:
+    profiles: ["search"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.license.self_generated.type: basic
+      ELASTIC_PASSWORD: "${ELASTIC_PASSWORD:-}"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    mem_limit: 1g
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'test -n "$$ELASTIC_PASSWORD" && curl --fail --silent --user "elastic:$$ELASTIC_PASSWORD" "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s" > /dev/null'
+      interval: 10s
+      timeout: 8s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  elasticsearch-data:

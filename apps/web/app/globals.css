@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@source "../../../packages/ui/src";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-foreground: #222222;
+  --color-muted: #68766f;
+  --color-accent: #00a63d;
+  --color-border: #e3e9e6;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}

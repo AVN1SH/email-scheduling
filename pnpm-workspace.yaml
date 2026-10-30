@@ -1,0 +1,17 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+overrides:
+  # Elasticsearch's telemetry core currently requires API <1.10.
+  "@opentelemetry/api": "1.9.0"
+allowBuilds:
+  "@prisma/engines": true
+  esbuild: true
+  msgpackr-extract: false
+  prisma: true
+minimumReleaseAgeExclude:
+  - "@rollup/rollup-linux-riscv64-musl@4.66.0"
+  - "@rollup/rollup-win32-ia32-msvc@4.66.0"
+  - "@rollup/rollup-win32-x64-msvc@4.66.0"
+  - google-auth-library@11.3.2
+  - nodemailer@10.3.1

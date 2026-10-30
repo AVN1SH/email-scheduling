@@ -1,0 +1,257 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                String             @id @default(uuid()) @db.Uuid
+  email             String             @unique
+  name              String?
+  avatarUrl         String?
+  passwordHash      String?
+  googleSubject     String?            @unique
+  sessions          Session[]
+  senders           Sender[]
+  batches           EmailBatch[]
+  attachments       Attachment[]
+  senderLimitEvents SenderLimitEvent[]
+  slackConnection   SlackConnection?
+  slackOAuthStates  SlackOAuthState[]
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+}
+
+model Session {
+  id        String   @id
+  data      Json
+  expiresAt DateTime @db.Timestamptz(3)
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+enum EmailStatus {
+  PENDING_DISPATCH
+  SCHEDULED
+  PROCESSING
+  RETRYING
+  SENT
+  FAILED
+  DELIVERY_UNCERTAIN
+  CANCELLED
+}
+
+enum DeliveryOutcome {
+  RESERVED
+  SMTP_STARTED
+  SENT
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+  UNCERTAIN
+  ABANDONED
+}
+
+model Sender {
+  id                   String       @id @default(uuid()) @db.Uuid
+  userId               String       @db.Uuid
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identityKey          String
+  name                 String
+  email                String
+  credentialsEncrypted String
+  active               Boolean      @default(true)
+  batches              EmailBatch[]
+  createdAt            DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@unique([userId, identityKey])
+  @@index([identityKey])
+}
+
+model EmailBatch {
+  id             String         @id @default(uuid()) @db.Uuid
+  userId         String         @db.Uuid
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderId       String         @db.Uuid
+  sender         Sender         @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  idempotencyKey String
+  requestHash    String
+  namespace      String         @default("email-scheduler")
+  subject        String
+  body           String
+  bodyHtml       String?
+  startAt        DateTime       @db.Timestamptz(3)
+  delayMs        Int
+  hourlyLimit    Int
+  emails         Email[]
+  attachments    Attachment[]
+  dispatchEvent  DispatchEvent?
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([namespace, createdAt])
+}
+
+model Email {
+  id              String            @id @default(uuid()) @db.Uuid
+  batchId         String            @db.Uuid
+  batch           EmailBatch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  recipient       String
+  requestedAt     DateTime          @db.Timestamptz(3)
+  scheduledAt     DateTime          @db.Timestamptz(3)
+  status          EmailStatus       @default(PENDING_DISPATCH)
+  attemptsMade    Int               @default(0)
+  activeAttemptId String?           @db.Uuid
+  sentAt          DateTime?         @db.Timestamptz(3)
+  failedAt        DateTime?         @db.Timestamptz(3)
+  lastErrorCode   String?
+  deferredReason  String?
+  messageId       String?
+  previewUrl      String?
+  starred         Boolean           @default(false)
+  archived        Boolean           @default(false)
+  deletedAt       DateTime?         @db.Timestamptz(3)
+  attempts        DeliveryAttempt[]
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@unique([batchId, recipient])
+  @@index([status, scheduledAt])
+  @@index([deletedAt, archived, status])
+}
+
+model Attachment {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @db.Uuid
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batchId     String?     @db.Uuid
+  batch       EmailBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  filename    String
+  contentType String
+  size        Int
+  sha256      String
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, batchId])
+}
+
+model DeliveryAttempt {
+  id               String          @id @default(uuid()) @db.Uuid
+  emailId          String          @db.Uuid
+  email            Email           @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  batchId          String          @db.Uuid
+  namespace        String
+  identityKey      String
+  number           Int
+  spacingMs        Int
+  windowStart      DateTime        @db.Timestamptz(3)
+  outcome          DeliveryOutcome @default(RESERVED)
+  reservedAt       DateTime        @db.Timestamptz(3)
+  leaseExpiresAt   DateTime        @db.Timestamptz(3)
+  startedAt        DateTime?       @db.Timestamptz(3)
+  finishedAt       DateTime?       @db.Timestamptz(3)
+  errorCode        String?
+  smtpResponseCode Int?
+  messageId        String
+
+  @@unique([emailId, number])
+  @@index([namespace, identityKey, windowStart])
+  @@index([batchId, windowStart])
+}
+
+model SenderGate {
+  key            String    @id
+  leaseToken     String?   @db.Uuid
+  leaseExpiresAt DateTime? @db.Timestamptz(3)
+  nextAllowedAt  DateTime  @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model SenderLimitEvent {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  namespace             String
+  identityKey           String
+  scopeKey              String    @default("sender")
+  batchId               String?   @db.Uuid
+  windowStart           DateTime  @db.Timestamptz(3)
+  resetsAt              DateTime  @db.Timestamptz(3)
+  limit                 Int
+  notifiedAt            DateTime? @db.Timestamptz(3)
+  notificationState     String    @default("PENDING")
+  notificationAttempts  Int       @default(0)
+  nextAttemptAt         DateTime  @default(now()) @db.Timestamptz(3)
+  leaseToken            String?   @db.Uuid
+  leaseExpiresAt        DateTime? @db.Timestamptz(3)
+  connectionGeneration  String?   @db.Uuid
+  lastNotificationError String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([userId, namespace, identityKey, windowStart, scopeKey], map: "SenderLimitEvent_scope_window_key")
+  @@index([notifiedAt])
+  @@index([namespace, notificationState, nextAttemptAt])
+}
+
+model SlackConnection {
+  userId           String    @id @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generation       String    @default(uuid()) @db.Uuid
+  teamId           String?
+  teamName         String?
+  channelId        String?
+  channelName      String?
+  webhookEncrypted String?
+  connectedAt      DateTime? @db.Timestamptz(3)
+  disconnectedAt   DateTime? @db.Timestamptz(3)
+  lastErrorCode    String?
+}
+
+model SlackOAuthState {
+  id          String    @id
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionHash String
+  generation  String    @db.Uuid
+  expiresAt   DateTime  @db.Timestamptz(3)
+  consumedAt  DateTime? @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@index([userId, sessionHash])
+}
+
+model DispatchEvent {
+  id          String     @id @default(uuid()) @db.Uuid
+  batchId     String     @unique @db.Uuid
+  batch       EmailBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  publishedAt DateTime?  @db.Timestamptz(3)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([publishedAt])
+}
+
+model SearchDocument {
+  emailId   String @id @db.Uuid
+  userId    String @db.Uuid
+  namespace String
+  revision  BigInt
+
+  @@index([namespace])
+}
+
+model SearchCheckpoint {
+  indexName String
+  emailId   String @db.Uuid
+  revision  BigInt
+
+  @@id([indexName, emailId])
+}

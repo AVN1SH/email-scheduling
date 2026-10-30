@@ -1,0 +1,33 @@
+{
+  "name": "email-scheduling",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:worker": "turbo run dev:worker --filter=api",
+    "start:api": "pnpm --filter api start",
+    "start:web": "pnpm --filter web start",
+    "start:worker": "pnpm --filter api start:worker",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check-types": "turbo run check-types",
+    "db:generate": "pnpm --filter @repo/db db:generate",
+    "db:migrate": "pnpm --filter @repo/db db:migrate",
+    "db:deploy": "pnpm --filter @repo/db db:deploy",
+    "db:status": "pnpm --filter @repo/db db:status",
+    "services:up": "docker compose up -d --wait redis",
+    "services:stop": "docker compose stop",
+    "services:status": "docker compose ps",
+    "services:search": "docker compose --env-file .env.docker.local --profile search up -d --wait elasticsearch"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6",
+    "turbo": "^2.11.10",
+    "typescript": "7.0.2"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

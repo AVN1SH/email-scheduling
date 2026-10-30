@@ -1,0 +1,13 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/api/.env"],
+      "env": ["DIRECT_URL", "SHADOW_DATABASE_URL"],
+      "outputs": ["dist/**", "src/generated/**"]
+    },
+    "check-types": {
+      "env": ["DIRECT_URL", "SHADOW_DATABASE_URL"]
+    }
+  }
+}
